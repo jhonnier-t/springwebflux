@@ -7,6 +7,8 @@ import com.test.softka.services.UserService;
 import com.test.softka.utils.enums.EventEnum;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,21 +36,28 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Mono<String> login(@RequestBody User user) {
+    public ResponseEntity<Mono<String>> login(@RequestBody User user) {
         Audit auditEvent = new Audit(null, user.getEmail(), EventEnum.LOGIN.getValor(), LocalDateTime.now());
-        rabbitTemplate.convertAndSend("auditExchange", "auditRoutingKey", auditEvent);
+        //rabbitTemplate.convertAndSend(queueName, auditEvent);
+        auditService.saveAuditEvent(auditEvent).block();
         boolean statusAuth = userService.verifyAuthUser(user);
         if (statusAuth){
-            return Mono.just("Login successful");
+            userService.updateUserSession(user.getEmail(), true);
+            return new ResponseEntity<>(Mono.just("Login successful"), HttpStatus.OK);
         }
-        return Mono.just("Login denied");
+        return new ResponseEntity<>(Mono.just("Login denied"), HttpStatus.BAD_REQUEST);
     }
 
     @PostMapping("/logout")
-    public Mono<String> logout(@RequestBody User user) {
-        rabbitTemplate.convertAndSend(queueName,
-                new Audit(null, user.getEmail(), EventEnum.LOGOUT.getValor(), LocalDateTime.now()));
-        return null;
+    public ResponseEntity<Mono<String>> logout(@RequestBody User user) {
+        Audit auditEvent = new Audit(null, user.getEmail(), EventEnum.LOGOUT.getValor(), LocalDateTime.now());
+        //rabbitTemplate.convertAndSend(queueName, auditEvent);
+        auditService.saveAuditEvent(auditEvent).block();
+        User UserUpdated = userService.updateUserSession(user.getEmail(), false);
+        if (UserUpdated != null){
+            return new ResponseEntity<>(Mono.just("Logout successful"), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(Mono.just("Logout denied"), HttpStatus.BAD_REQUEST);
     }
 }
 

@@ -22,4 +22,14 @@ public class UserService {
         return Boolean.TRUE.equals(statusMono.block());
     }
 
+    public User updateUserSession(String email, boolean statusEnable) {
+        User userResponse = null;
+        User userToUpdate = getUserByEmail(email).block();
+        if (userToUpdate != null) {
+            userToUpdate.setEnabled(statusEnable);
+            userResponse = userRepository.save(userToUpdate).block();
+        }
+        return userResponse;
+    }
+
 }
