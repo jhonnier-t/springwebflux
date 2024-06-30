@@ -24,9 +24,6 @@ public class AuthController {
     static final String queueName = "auditQueue";
 
     @Autowired
-    private AuditService auditService;
-
-    @Autowired
     private UserService userService;
 
     private final RabbitTemplate rabbitTemplate;
@@ -38,8 +35,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Mono<String>> login(@RequestBody User user) {
         Audit auditEvent = new Audit(null, user.getEmail(), EventEnum.LOGIN.getValor(), LocalDateTime.now());
-        //rabbitTemplate.convertAndSend(queueName, auditEvent);
-        auditService.saveAuditEvent(auditEvent).block();
+        rabbitTemplate.convertAndSend(queueName, auditEvent);
         boolean statusAuth = userService.verifyAuthUser(user);
         if (statusAuth){
             userService.updateUserSession(user.getEmail(), true);
@@ -51,8 +47,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Mono<String>> logout(@RequestBody User user) {
         Audit auditEvent = new Audit(null, user.getEmail(), EventEnum.LOGOUT.getValor(), LocalDateTime.now());
-        //rabbitTemplate.convertAndSend(queueName, auditEvent);
-        auditService.saveAuditEvent(auditEvent).block();
+        rabbitTemplate.convertAndSend(queueName, auditEvent);
         User UserUpdated = userService.updateUserSession(user.getEmail(), false);
         if (UserUpdated != null){
             return new ResponseEntity<>(Mono.just("Logout successful"), HttpStatus.OK);

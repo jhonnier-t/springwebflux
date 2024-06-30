@@ -14,8 +14,6 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     static final String queueName = "auditQueue";
-    static final String exchangeName = "auditExchange";
-    static final String routingKey = "auditRoutingKey";
 
     @Bean
     Queue queue() {
